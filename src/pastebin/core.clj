@@ -55,7 +55,12 @@
                          wrap-keyword-params
                          [wrap-cors :access-control-allow-origin  #".*"
                           :access-control-allow-methods [:get :put :post :patch :delete]]]
-            :db db}})))
+            :db db}})
+   (ring/routes
+    (ring/create-default-handler
+     {
+      :not-found (constantly {:status 404 :body "not found"})
+      :method-not-allowed (constantly {:status 405 :body "not allowed"})}))))
 
 (def config
   {:adapter/jetty {:handler (ig/ref :handler/run-app) :port 4123}
@@ -69,6 +74,3 @@
 
 (defn -main []
   (ig/init  config))
-
-
-
