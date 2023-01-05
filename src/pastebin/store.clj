@@ -5,13 +5,17 @@
         raw (.digest md5 (.getBytes s))]
     (format "%032x" (BigInteger. 1 raw))))
 
-(defn add-item [db data]
-  (let [hash-value (md5sum data)]
-    (do
-      (swap! db assoc hash-value data)
-      {:key hash-value})))
+(defn insert [db k v]
+  (do
+    (swap! db assoc k v)
+    {:key k}))
+
+(defn add-item
+  ([db k v]
+   (insert db k v))
+  ([db v]
+   (insert db (md5sum v) v)))
 
 (defn get-item [db id]
   (let [r (@db id)]
     {:paste r}))
-
