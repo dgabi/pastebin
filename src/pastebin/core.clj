@@ -1,17 +1,17 @@
 (ns pastebin.core
   (:require [integrant.core :as ig]
-            [ring.adapter.jetty :refer [run-jetty]]
-            [reitit.ring :as ring]
-            [pastebin.store :as store]
             [muuntaja.core :as m]
-            [ring.util.response :as rr]
+            [pastebin.filestore :as filestore]
+            [pastebin.store :as store]
             [reitit.coercion.schema :as rcs]
+            [reitit.ring :as ring]
             [reitit.ring.coercion :as rrc]
-            [ring.middleware.cors :refer [wrap-cors]]
             [reitit.ring.middleware.muuntaja :as rrmm]
             [reitit.ring.middleware.parameters :as parameters]
+            [ring.adapter.jetty :refer [run-jetty]]
+            [ring.middleware.cors :refer [wrap-cors]]
             [ring.middleware.keyword-params :refer [wrap-keyword-params]]
-            [org.httpkit.server :as server]))
+            [ring.util.response :as rr]))
 
 (defn ping [_]
   {:status 200 :body "ok"})
@@ -62,9 +62,16 @@
       :not-found (constantly {:status 404 :body "not found"})
       :method-not-allowed (constantly {:status 405 :body "not allowed"})}))))
 
+(defn init-db [file]
+  (let [db (atom {})]
+    (do
+      (filestore/init-from-file file db)
+      {:db db})
+    ))
+
 (def config
   {:adapter/jetty {:handler (ig/ref :handler/run-app) :port 4123}
-   :handler/run-app {:db (atom {})}})
+   :handler/run-app (init-db "test/pastebin/filestore.data")})
 
 (defmethod ig/init-key :adapter/jetty [_ {:keys [handler] :as opts}]
   (run-jetty handler (-> opts (dissoc handler) (assoc :join? false))))
