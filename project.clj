@@ -10,6 +10,7 @@
                  [metosin/reitit "0.5.9"]
                  [ring/ring-jetty-adapter "1.8.1"]
                  [ring-cors/ring-cors "0.1.13"]
+                 [org.clojure/core.async "1.6.673"]
                  [metosin/reitit-ring "0.5.15"]]
   :main pastebin.core
   :repl-options {:init-ns pastebin.core})
