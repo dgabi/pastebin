@@ -1,8 +1,8 @@
 (ns pastebin.core
   (:require [integrant.core :as ig]
             [muuntaja.core :as m]
-            [pastebin.filestore :as filestore]
-            [pastebin.store :as store]
+            [clojure.java.io :as io]
+            [clojure.string :as str]
             [reitit.coercion.schema :as rcs]
             [reitit.ring :as ring]
             [reitit.ring.coercion :as rrc]
@@ -11,7 +11,57 @@
             [ring.adapter.jetty :refer [run-jetty]]
             [ring.middleware.cors :refer [wrap-cors]]
             [ring.middleware.keyword-params :refer [wrap-keyword-params]]
-            [ring.util.response :as rr]))
+            [ring.util.response :as rr]
+            [clojure.core.async :as a :refer [>! <! >!! <!! go chan put!
+                                             buffer close! thread alts! alts!!
+                                              timeout]])
+  (:import java.util.Base64))
+
+
+
+(defn encode-base64 [to-encode]
+  (.encodeToString (Base64/getEncoder) (.getBytes to-encode)))
+
+(defn decode-base64 [to-decode]
+  (String. (.decode (Base64/getDecoder) to-decode)))
+
+(defn md5sum [s]
+  (let [md5 (java.security.MessageDigest/getInstance "MD5")
+        raw (.digest md5 (.getBytes s))]
+    (format "%032x" (BigInteger. 1 raw))))
+
+(def save-chan (chan 5))
+
+;; to be implemented
+(defn save-to-file [v]
+  (println v))
+
+(go (while true (save-to-file (<! save-chan ))))
+
+(defn insert [db k v]
+  (do
+    (swap! db assoc k v)
+    (put! save-chan (str k " " (encode-base64 v)))
+    {:key k}))
+
+(defn add-item
+  ([db k v]
+   (insert db k v))
+  ([db v]
+   (insert db (md5sum v) v)))
+
+(defn get-item [db id]
+  (let [r (@db id)]
+    {:paste r}))
+
+(defn init-from-file [file-path store]
+  (with-open [rdr (io/reader file-path)]
+    (dorun (map #(let [line-split (str/split % #" ")]
+                   (add-item store
+                             (first line-split)
+                             (decode-base64
+                              (last line-split))))
+                (line-seq rdr)))))
 
 (defn ping [_]
   {:status 200 :body "ok"})
@@ -19,14 +69,14 @@
 (defn add-paste [req]
   (let [data (get-in req [:params :data]) db (req :db)]
     (if (not (nil? data))
-      (-> (store/add-item db data)
+      (-> (add-item db data)
           rr/response)
       (rr/bad-request {"messsage" "missing form parameter 'data'"})
     )))
 
 (defn get-paste [request]
   (let [id (get-in request [:path-params :id]) db (:db request)]
-      (-> (store/get-item db id)
+      (-> (get-item db id)
           rr/response)))
 
 (def middleware-insert-db
@@ -65,13 +115,14 @@
 (defn init-db [file]
   (let [db (atom {})]
     (do
-      (filestore/init-from-file file db)
+      (init-from-file file db)
       {:db db})
     ))
 
 (def config
   {:adapter/jetty {:handler (ig/ref :handler/run-app) :port 4123}
    :handler/run-app (init-db "test/pastebin/filestore.data")})
+
 
 (defmethod ig/init-key :adapter/jetty [_ {:keys [handler] :as opts}]
   (run-jetty handler (-> opts (dissoc handler) (assoc :join? false))))
