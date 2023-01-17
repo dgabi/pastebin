@@ -32,9 +32,8 @@
 
 (def save-chan (chan 5))
 
-;; to be implemented
 (defn save-to-file [v]
-  (println v))
+  (spit "test/pastebin/filestore.data" v))
 
 (go (while true (save-to-file (<! save-chan ))))
 
