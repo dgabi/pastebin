@@ -13,11 +13,9 @@
             [ring.middleware.keyword-params :refer [wrap-keyword-params]]
             [ring.util.response :as rr]
             [clojure.core.async :as a :refer [>! <! >!! <!! go chan put!
-                                             buffer close! thread alts! alts!!
+                                              buffer close! thread alts! alts!!
                                               timeout]])
   (:import java.util.Base64))
-
-
 
 (defn encode-base64 [to-encode]
   (.encodeToString (Base64/getEncoder) (.getBytes to-encode)))
@@ -35,7 +33,7 @@
 (defn save-to-file [v]
   (spit "test/pastebin/filestore.data" v))
 
-(go (while true (save-to-file (<! save-chan ))))
+(go (while true (save-to-file (<! save-chan))))
 
 (defn insert [db k v]
   (do
@@ -70,13 +68,12 @@
     (if (not (nil? data))
       (-> (add-item db data)
           rr/response)
-      (rr/bad-request {"messsage" "missing form parameter 'data'"})
-    )))
+      (rr/bad-request {:message "missing form parameter 'data'"}))))
 
 (defn get-paste [request]
   (let [id (get-in request [:path-params :id]) db (:db request)]
-      (-> (get-item db id)
-          rr/response)))
+    (-> (get-item db id)
+        rr/response)))
 
 (def middleware-insert-db
   {:name ::db
@@ -107,21 +104,18 @@
             :db db}})
    (ring/routes
     (ring/create-default-handler
-     {
-      :not-found (constantly {:status 404 :body "not found"})
+     {:not-found (constantly {:status 404 :body "not found"})
       :method-not-allowed (constantly {:status 405 :body "not allowed"})}))))
 
 (defn init-db [file]
   (let [db (atom {})]
     (do
       (init-from-file file db)
-      {:db db})
-    ))
+      {:db db})))
 
 (def config
   {:adapter/jetty {:handler (ig/ref :handler/run-app) :port 4123}
    :handler/run-app (init-db "test/pastebin/filestore.data")})
-
 
 (defmethod ig/init-key :adapter/jetty [_ {:keys [handler] :as opts}]
   (run-jetty handler (-> opts (dissoc handler) (assoc :join? false))))
