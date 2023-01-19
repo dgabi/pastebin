@@ -14,7 +14,8 @@
             [ring.util.response :as rr]
             [clojure.core.async :as a :refer [>! <! >!! <!! go chan put!
                                               buffer close! thread alts! alts!!
-                                              timeout]])
+                                              timeout]]
+            [ring.logger :as logger])
   (:import java.util.Base64))
 
 (defn encode-base64 [to-encode]
@@ -124,7 +125,11 @@
    :handler/run-app (init-db "test/pastebin/filestore.data")})
 
 (defmethod ig/init-key :adapter/jetty [_ {:keys [handler] :as opts}]
-  (run-jetty handler (-> opts (dissoc handler) (assoc :join? false))))
+  (run-jetty (-> handler
+                 logger/wrap-log-response)
+             (-> opts
+                 (dissoc handler)
+                 (assoc :join? false))))
 
 (defmethod ig/init-key :handler/run-app [_ {:keys [db]}]
   (app db))
