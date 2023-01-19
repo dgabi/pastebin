@@ -66,8 +66,10 @@
 (defn add-paste [req]
   (let [data (get-in req [:params :data]) db (req :db)]
     (if (not (nil? data))
-      (-> (add-item db data)
-          rr/response)
+      (if (> 1025 (alength (.getBytes data "UTF-8")))
+        (-> (add-item db data)
+            rr/response)
+        (rr/bad-request {:message "payload larger than 1024 bytes"}))
       (rr/bad-request {:message "missing form parameter 'data'"}))))
 
 (defn get-paste [request]

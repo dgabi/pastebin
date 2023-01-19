@@ -29,9 +29,25 @@
              {:status 200,
               :headers {}
               :body {:key "0cc175b9c0f1b6a831c399e269772661"}}))))
-  (testing "add-paste fail"
+  (testing "add-paste fail missing data"
     (let [request {:params {:data nil} :db (atom {})}]
       (is (= (add-paste request)
              {:status 400,
               :headers {}
-              :body {:message "missing form parameter 'data'"}})))))
+              :body {:message "missing form parameter 'data'"}}))))
+  (testing "add-paste fail large payload"
+    (let [request {:params {:data (apply str (take 1025 (repeat "a")))} :db (atom {})}]
+      (is (= (add-paste request)
+             {:status 400,
+              :headers {}
+              :body {:message "payload larger than 1024 bytes"}})))))
+
+(deftest test-get-paste
+  (testing "get-paste item exists"
+    (let [db (atom {})
+          reply (add-paste {:params {:data "a"} :db db})]
+      (is (= (get-paste
+              {:path-params {:id (get-in reply [:body :key])} :db db})
+             {:status 200
+              :headers {}
+              :body {:paste "a"}})))))
