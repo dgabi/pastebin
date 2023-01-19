@@ -50,4 +50,10 @@
               {:path-params {:id (get-in reply [:body :key])} :db db})
              {:status 200
               :headers {}
-              :body {:paste "a"}})))))
+              :body {:paste "a"}}))))
+  (testing "get-paste item doesnt exits"
+    (is (= (get-paste
+            {:path-params {:id "1234"} :db (atom {})})
+           {:status 200
+            :headers {}
+            :body {:paste nil}}))))
