@@ -73,9 +73,13 @@
       (rr/bad-request {:message "missing form parameter 'data'"}))))
 
 (defn get-paste [request]
-  (let [id (get-in request [:path-params :id]) db (:db request)]
-    (-> (get-item db id)
-        rr/response)))
+  (let [id (get-in request [:path-params :id])
+        db (:db request)
+        rslt (get-item db id)]
+    (if (nil? (get rslt :paste))
+      (rr/not-found rslt)
+      (rr/response rslt))
+    ))
 
 (def middleware-insert-db
   {:name ::db

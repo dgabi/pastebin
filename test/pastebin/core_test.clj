@@ -54,6 +54,6 @@
   (testing "get-paste item doesnt exits"
     (is (= (get-paste
             {:path-params {:id "1234"} :db (atom {})})
-           {:status 200
+           {:status 404
             :headers {}
             :body {:paste nil}}))))
